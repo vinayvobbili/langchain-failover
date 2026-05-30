@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+## 0.1.1 (2026-05-30)
 - **Fix (important):** bound tools now actually reach the model. The wrapper
   delegated to the inner model's `_generate`/`_stream` directly, which bypassed
   the `RunnableBinding` kwargs that `bind_tools` produces for real chat models
