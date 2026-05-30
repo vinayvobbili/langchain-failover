@@ -1,5 +1,7 @@
 # langchain-failover
 
+[![CI](https://github.com/vinayvobbili/langchain-failover/actions/workflows/ci.yml/badge.svg)](https://github.com/vinayvobbili/langchain-failover/actions/workflows/ci.yml)
+
 A tiny, dependency-light **primary/secondary failover wrapper** for LangChain chat
 models. Point it at two chat models; it serves from the primary, transparently
 falls back to the secondary on connection errors, and switches back the moment the
