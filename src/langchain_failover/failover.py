@@ -12,6 +12,7 @@ import logging
 from typing import Any, Optional
 
 from langchain_core.language_models import BaseChatModel
+from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from pydantic import ConfigDict
 
 logger = logging.getLogger(__name__)
@@ -97,40 +98,62 @@ class FailoverChatModel(BaseChatModel):
         )
         self._active = "secondary"
 
+    @staticmethod
+    def _delegate_generate(model, messages, stop, **kwargs):
+        """Generate by delegating through the Runnable interface (``invoke``).
+
+        CRITICAL: do **not** call ``model._generate()`` directly. When tools are
+        bound with :meth:`bind_tools`, ``model`` is a ``RunnableBinding`` that
+        stores the tools in its ``kwargs`` and only applies them inside
+        ``invoke()``. Calling ``._generate()`` bypasses those kwargs, so the model
+        runs toolless and silently drops ``tool_calls`` — defeating the whole
+        point of preserving tool-calling across failover. ``invoke()`` honors the
+        bound kwargs, then we wrap the returned message back into a ``ChatResult``.
+        """
+        if stop is not None:
+            kwargs.setdefault("stop", stop)
+        message = model.invoke(messages, **kwargs)
+        return ChatResult(generations=[ChatGeneration(message=message)])
+
     def _generate(self, messages, stop=None, run_manager=None, **kwargs):
         try:
-            result = self.primary._generate(
-                messages, stop=stop, run_manager=run_manager, **kwargs
-            )
+            result = self._delegate_generate(self.primary, messages, stop, **kwargs)
             self._mark_primary_recovered()
             return result
         except Exception as exc:
             if is_connection_error(exc):
                 self._switch_to_secondary(exc)
-                return self.secondary._generate(
-                    messages, stop=stop, run_manager=run_manager, **kwargs
-                )
+                return self._delegate_generate(self.secondary, messages, stop, **kwargs)
             raise
 
     def _stream(self, messages, stop=None, run_manager=None, **kwargs):
-        # Only fail over if the primary dies *before* emitting its first chunk;
-        # once tokens are flowing a mid-stream error is a real error, not a
-        # connect failure, and retrying would duplicate already-yielded output.
+        # Delegate via ``stream()`` (Runnable interface), not ``_stream()``, for the
+        # same reason as _generate — ``_stream()`` would bypass bound-tool kwargs.
+        # Only fail over if the primary dies *before* the first chunk; once tokens
+        # are flowing a mid-stream error is a real error, and retrying would
+        # duplicate already-yielded output.
+        if stop is not None:
+            kwargs.setdefault("stop", stop)
         try:
             started = False
-            for chunk in self.primary._stream(
-                messages, stop=stop, run_manager=run_manager, **kwargs
-            ):
+            for chunk in self.primary.stream(messages, **kwargs):
                 if not started:
                     started = True
                     self._mark_primary_recovered()
-                yield chunk
+                gen = ChatGenerationChunk(message=chunk)
+                if run_manager is not None:
+                    token = chunk.content if isinstance(chunk.content, str) else ""
+                    run_manager.on_llm_new_token(token, chunk=gen)
+                yield gen
         except Exception as exc:
             if is_connection_error(exc) and not started:
                 self._switch_to_secondary(exc)
-                yield from self.secondary._stream(
-                    messages, stop=stop, run_manager=run_manager, **kwargs
-                )
+                for chunk in self.secondary.stream(messages, **kwargs):
+                    gen = ChatGenerationChunk(message=chunk)
+                    if run_manager is not None:
+                        token = chunk.content if isinstance(chunk.content, str) else ""
+                        run_manager.on_llm_new_token(token, chunk=gen)
+                    yield gen
             else:
                 raise
 

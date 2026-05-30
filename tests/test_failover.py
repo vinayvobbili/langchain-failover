@@ -105,3 +105,38 @@ def test_is_connection_error_walks_cause_chain():
     outer.__cause__ = inner
     assert is_connection_error(outer)
     assert not is_connection_error(ValueError("totally unrelated"))
+
+
+class _ToolAwareChat(BaseChatModel):
+    """Echoes how many tools actually reached ``_generate`` as a kwarg.
+
+    ``bind_tools`` returns a ``RunnableBinding`` (via ``Runnable.bind``), exactly
+    like ``ChatOpenAI`` does — the bound tools are applied only inside
+    ``invoke()``. A wrapper that delegates to the inner model's ``_generate()``
+    directly drops them; one that delegates via ``invoke()`` preserves them.
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @property
+    def _llm_type(self) -> str:
+        return "toolaware"
+
+    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+        n = len(kwargs.get("tools") or [])
+        return ChatResult(generations=[ChatGeneration(message=AIMessage(content=f"tools={n}"))])
+
+    def bind_tools(self, tools, **kwargs):
+        return self.bind(tools=list(tools))
+
+
+def test_bound_tools_actually_reach_the_model():
+    # Regression for the 0.1.0 bug: FailoverChatModel delegated to the inner
+    # model's _generate() directly, which bypassed the RunnableBinding kwargs and
+    # silently dropped the bound tools (and thus tool_calls). The wrapper must
+    # delegate via invoke() so the tools actually reach the model.
+    base = _ToolAwareChat()
+    llm = FailoverChatModel(primary=base, secondary=base)
+    bound = llm.bind_tools([{"name": "a"}, {"name": "b"}])
+    assert isinstance(bound, FailoverChatModel)
+    assert bound.invoke("hi").content == "tools=2"
