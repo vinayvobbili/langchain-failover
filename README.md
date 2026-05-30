@@ -1,6 +1,9 @@
 # langchain-failover
 
 [![CI](https://github.com/vinayvobbili/langchain-failover/actions/workflows/ci.yml/badge.svg)](https://github.com/vinayvobbili/langchain-failover/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/langchain-failover)](https://pypi.org/project/langchain-failover/)
+[![Python](https://img.shields.io/pypi/pyversions/langchain-failover)](https://pypi.org/project/langchain-failover/)
+[![License](https://img.shields.io/pypi/l/langchain-failover)](https://github.com/vinayvobbili/langchain-failover/blob/main/LICENSE)
 
 A tiny, dependency-light **primary/secondary failover wrapper** for LangChain chat
 models. Point it at two chat models; it serves from the primary, transparently
