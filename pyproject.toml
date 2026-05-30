@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "langchain-failover"
+version = "0.1.0"
+description = "Primary/secondary failover wrapper for LangChain chat models, with tool-calling preserved across failover."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "Vinay Vobbilichetty", email = "vinayvobbilichetty11@gmail.com" }]
+keywords = ["langchain", "llm", "failover", "fallback", "resilience", "high-availability", "chat-model"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "langchain-core>=0.2",
+]
+
+[project.optional-dependencies]
+openai = ["langchain-openai>=0.1"]
+dev = [
+    "langchain-openai>=0.1",
+    "pytest>=7",
+    "ruff>=0.4",
+    "build>=1.0",
+    "twine>=5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/vinayvobbili/langchain-failover"
+Repository = "https://github.com/vinayvobbili/langchain-failover"
+Issues = "https://github.com/vinayvobbili/langchain-failover/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/langchain_failover"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
