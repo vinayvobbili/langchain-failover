@@ -11,6 +11,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from langchain_core.messages import AIMessageChunk
+from pydantic import ConfigDict
 
 from langchain_failover import FailoverChatModel, is_connection_error
 
@@ -18,12 +19,11 @@ from langchain_failover import FailoverChatModel, is_connection_error
 class _FakeChat(BaseChatModel):
     """Answers with a fixed reply, or raises a chosen exception on every call."""
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     reply: str = "ok"
     raises: Any = None
     calls: int = 0
-
-    class Config:
-        arbitrary_types_allowed = True
 
     @property
     def _llm_type(self) -> str:
