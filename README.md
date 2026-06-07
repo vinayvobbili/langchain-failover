@@ -10,6 +10,8 @@ models. Point it at two chat models; it serves from the primary, transparently
 falls back to the secondary on connection errors, and switches back the moment the
 primary recovers — **and tool-calling keeps working across the failover.**
 
+> **Background:** [SOC-in-a-Box: One LLM, Eight Hats](https://vinayvobbili.github.io/posts/building-soc-in-a-box/) — the production AI SOC this was extracted from, where it fails a local LLM over to a backup mid-incident.
+
 ```python
 from langchain_openai import ChatOpenAI
 from langchain_failover import FailoverChatModel
