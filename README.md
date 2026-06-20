@@ -5,12 +5,22 @@
 [![Python](https://img.shields.io/pypi/pyversions/langchain-failover)](https://pypi.org/project/langchain-failover/)
 [![License](https://img.shields.io/pypi/l/langchain-failover)](https://github.com/vinayvobbili/langchain-failover/blob/main/LICENSE)
 
-A tiny, dependency-light **primary/secondary failover wrapper** for LangChain chat
-models. Point it at two chat models; it serves from the primary, transparently
-falls back to the secondary on connection errors, and switches back the moment the
-primary recovers — **and tool-calling keeps working across the failover.**
+Tiny, dependency-light **multi-model orchestration** for LangChain chat models —
+two strategies for running more than one model behind one interface:
 
-> **Background:** [SOC-in-a-Box: One LLM, Eight Hats](https://vinayvobbili.github.io/posts/building-soc-in-a-box/) — the production AI SOC this was extracted from, where it fails a local LLM over to a backup mid-incident.
+- **Failover** (`FailoverChatModel`) — for **resilience**. Serve from a primary,
+  transparently fall back to a secondary on connection errors, switch back the
+  moment the primary recovers. Tool-calling keeps working across the failover.
+- **Tier-split** (`TieredChatAgent`) — for **cost/latency**. Run the tool-gathering
+  loop on a cheap/local model, then compose the final answer on a frontier model.
+  The long generation moves off the contended box.
+
+They compose: either tier of a `TieredChatAgent` can itself be a
+`FailoverChatModel`. Depends only on `langchain-core`.
+
+> **Background:** [SOC-in-a-Box: One LLM, Eight Hats](https://vinayvobbili.github.io/posts/building-soc-in-a-box/) — the production AI SOC this was extracted from, where it fails a local LLM over to a backup mid-incident and offloads final-answer synthesis to a frontier model.
+
+## Failover — for resilience
 
 ```python
 from langchain_openai import ChatOpenAI
@@ -27,6 +37,34 @@ llm.invoke("And the next one?")           # transparently served by backup
 # …primary comes back…
 llm.invoke("One more")                     # back on primary, logged as recovered
 ```
+
+## Tier-split — for cost/latency
+
+A tool-calling agent spends almost all of its tokens and wall-clock on the *loop*
+(decide a call, read the result, decide the next) — cheap reasoning. Writing the
+final answer is the part that wants a stronger model. They don't have to be the
+same model. `TieredChatAgent` runs the gathering loop on a cheap/local `gatherer`
+and composes the answer on a frontier `composer`:
+
+```python
+from langchain_failover import TieredChatAgent
+
+agent = TieredChatAgent(
+    gatherer=local_llm,      # cheap/local — drives the tool loop (tools are bound for you)
+    composer=frontier_llm,   # frontier — writes the final answer from gathered data
+    tools=[search, lookup_host, get_timeline],
+)
+
+agent.invoke("What changed in the incident overnight?").content
+```
+
+The gatherer is told to *gather, then stop* — it doesn't write the prose answer.
+A structural guard (`is_premature_marker`) catches the model trying to answer
+before calling any tool and nudges it to gather first, so the composer never
+writes an answer from zero data. On a contended local GPU this routinely turns a
+multi-minute final turn into a couple of seconds, because the long generation
+moves off the busy box. Running your own loop? `synthesize_answer(composer, query,
+messages)` is the compose step on its own.
 
 ## Install
 

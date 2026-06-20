@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+## 0.2.0 (2026-06-19)
+
+Reframed as **multi-model orchestration**: failover (resilience) is now joined by
+tier-split (cost/latency). The package adds an agent loop that gathers tool data
+on a cheap/local model and composes the final answer on a frontier model — fully
+backward compatible, still `langchain-core`-only.
+
+- `TieredChatAgent` — runs the tool-gathering loop on a `gatherer` and composes the
+  answer on a `composer`. Binds tools for you, executes tool calls (errors become
+  result text, never raised), nudges once on a premature "ready" signal, and has a
+  `max_rounds` runaway backstop. Either tier can be a `FailoverChatModel`.
+- `synthesize_answer(composer, query, messages)` — the compose step on its own, for
+  callers running their own loop. Flattens `ToolMessage`s (and `{"role":"tool"}`
+  dicts) into a clean, model-portable prompt; strips `<think>…</think>` blocks.
+- `is_premature_marker(content, tools_bound, tools_called)` — the structural safety
+  invariant (tools available ↔ none called) so the composer never answers from
+  zero data; real direct answers (e.g. greetings) pass through.
+- `create_tiered_agent` convenience constructor; exported prompt defaults
+  (`READY_MARKER`, `DEFAULT_GATHER_DIRECTIVE`, `DEFAULT_SYNTH_SYSTEM`).
+
 ## 0.1.1 (2026-05-30)
 - **Fix (important):** bound tools now actually reach the model. The wrapper
   delegated to the inner model's `_generate`/`_stream` directly, which bypassed

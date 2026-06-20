@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "langchain-failover"
-version = "0.1.1"
-description = "Primary/secondary failover wrapper for LangChain chat models, with tool-calling preserved across failover."
+version = "0.2.0"
+description = "Multi-model orchestration for LangChain chat models: primary/secondary failover (resilience) and tier-split gather/compose (cost/latency), tool-calling preserved across both."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
 authors = [{ name = "Vinay Vobbilichetty", email = "vinayvobbilichetty11@gmail.com" }]
-keywords = ["langchain", "llm", "failover", "fallback", "resilience", "high-availability", "chat-model"]
+keywords = ["langchain", "llm", "failover", "fallback", "resilience", "high-availability", "chat-model", "agent", "tool-calling", "orchestration", "latency", "local-llm"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
