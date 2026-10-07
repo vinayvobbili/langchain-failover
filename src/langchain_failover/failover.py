@@ -27,8 +27,22 @@ _CONNECTION_ERROR_NAMES = (
     "ConnectionRefusedError",
     "TimeoutError",
     "ReadTimeout",
+    "ConnectTimeout",
+    "TimeoutException",
+    "NetworkError",
     "APIConnectionError",
 )
+
+
+def _is_transport_type(exc: BaseException) -> bool:
+    # Check the whole MRO so subclasses count too: ConnectionResetError and
+    # BrokenPipeError are ConnectionErrors, openai's APITimeoutError is an
+    # APIConnectionError, httpx's ReadError is a NetworkError.
+    for cls in type(exc).__mro__:
+        name = cls.__name__
+        if name in _CONNECTION_ERROR_NAMES or "connection" in name.lower():
+            return True
+    return False
 
 
 def is_connection_error(exc: BaseException) -> bool:
@@ -38,17 +52,16 @@ def is_connection_error(exc: BaseException) -> bool:
     We walk ``__cause__``/``__context__`` because client libraries routinely wrap
     the original socket error inside a higher-level exception, so the interesting
     type is often several links down the chain.
+
+    Only exception *types* decide this, never the message text: a
+    ``ValueError("invalid connection string")`` is a caller bug, not a transport
+    failure, and retrying it on the secondary would hide it.
     """
     seen: set[int] = set()
     current: Optional[BaseException] = exc
     while current is not None and id(current) not in seen:
         seen.add(id(current))
-        name = type(current).__name__
-        if name in _CONNECTION_ERROR_NAMES:
-            return True
-        if "connection" in name.lower():
-            return True
-        if "connection" in str(current).lower()[:200]:
+        if _is_transport_type(current):
             return True
         current = current.__cause__ or current.__context__
     return False

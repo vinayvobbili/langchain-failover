@@ -107,6 +107,85 @@ def test_is_connection_error_walks_cause_chain():
     assert not is_connection_error(ValueError("totally unrelated"))
 
 
+@pytest.mark.parametrize(
+    "exc",
+    [
+        ValueError("invalid connection string"),
+        RuntimeError("Connection pool settings are invalid"),
+        KeyError("connection"),
+    ],
+)
+def test_message_text_alone_is_not_a_connection_error(exc):
+    assert not is_connection_error(exc)
+
+
+def test_bad_request_mentioning_connection_does_not_fail_over():
+    primary = _FakeChat(raises=ValueError("invalid connection string"))
+    secondary = _FakeChat(reply="secondary")
+    llm = FailoverChatModel(primary=primary, secondary=secondary)
+    with pytest.raises(ValueError):
+        llm.invoke("hi")
+    assert secondary.calls == 0
+    assert llm.active == "primary"
+
+
+def _named(name, *bases):
+    return type(name, bases or (Exception,), {})
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        ConnectionResetError("reset by peer"),
+        BrokenPipeError("broken pipe"),
+        TimeoutError("timed out"),
+        # Library types are matched by name, so stand-ins with the same names
+        # (and the same inheritance) behave like the real httpx/openai ones.
+        _named("APITimeoutError", _named("APIConnectionError"))("Request timed out."),
+        _named("ReadError", _named("NetworkError"))("read failed"),
+        _named("ConnectTimeout", _named("TimeoutException"))("connect timed out"),
+        _named("NewConnectionError")("failed to establish"),
+    ],
+)
+def test_transport_types_and_subclasses_are_connection_errors(exc):
+    assert is_connection_error(exc)
+
+
+def test_real_httpx_and_openai_errors_are_classified():
+    """The real client exceptions, not stand-ins (both come with langchain-openai)."""
+    httpx = pytest.importorskip("httpx")
+    openai = pytest.importorskip("openai")
+    req = httpx.Request("POST", "http://primary.local/v1/chat/completions")
+    transport = [
+        httpx.ConnectError("refused"),
+        httpx.ConnectTimeout("timed out"),
+        httpx.ReadTimeout("timed out"),
+        httpx.ReadError("reset"),
+        httpx.RemoteProtocolError("server disconnected"),
+        openai.APIConnectionError(request=req),
+        openai.APITimeoutError(request=req),
+    ]
+    for exc in transport:
+        assert is_connection_error(exc), type(exc).__name__
+    # The server answered, so these are real errors, not a reason to switch legs.
+    answered = [
+        openai.BadRequestError(
+            "invalid connection string", response=httpx.Response(400, request=req), body=None
+        ),
+        openai.InternalServerError(
+            "boom", response=httpx.Response(500, request=req), body=None
+        ),
+    ]
+    for exc in answered:
+        assert not is_connection_error(exc), type(exc).__name__
+
+
+def test_wrapped_timeout_is_a_connection_error():
+    outer = RuntimeError("upstream call failed")
+    outer.__context__ = TimeoutError("read timed out")
+    assert is_connection_error(outer)
+
+
 class _ToolAwareChat(BaseChatModel):
     """Echoes how many tools actually reached ``_generate`` as a kwarg.
 

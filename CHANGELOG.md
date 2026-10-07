@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Fix:** `is_connection_error` no longer treats an exception as a transport
+  failure just because its message contains "connection". It decides by exception
+  type only, so `ValueError("invalid connection string")` now propagates instead of
+  being retried on the secondary. Reported in
+  [vllm-mlx discussion #588](https://github.com/waybarrios/vllm-mlx/discussions/588).
+- Type matching now checks the whole class hierarchy, so subclasses count:
+  `ConnectionResetError`, `BrokenPipeError`, openai's `APITimeoutError`, and httpx's
+  `ConnectTimeout` / `ReadError` (via `TimeoutException` / `NetworkError`).
+
 ## 0.2.0 (2026-06-19)
 
 Reframed as **multi-model orchestration**: failover (resilience) is now joined by
