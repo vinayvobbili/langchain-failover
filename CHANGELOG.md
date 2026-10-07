@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+## 0.2.1 (2026-10-07)
 - **Fix:** `is_connection_error` no longer treats an exception as a transport
   failure just because its message contains "connection". It decides by exception
   type only, so `ValueError("invalid connection string")` now propagates instead of

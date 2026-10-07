@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "langchain-failover"
-version = "0.2.0"
+version = "0.2.1"
 description = "Multi-model orchestration for LangChain chat models: primary/secondary failover (resilience) and tier-split gather/compose (cost/latency), tool-calling preserved across both."
 readme = "README.md"
 requires-python = ">=3.9"
