@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Docs: the README's "See it in use" link now points at the aisoc write-up.
+  No code changes; released so pypi.org picks up the new README.
+
 ## 0.2.1 (2026-10-07)
 - **Fix:** `is_connection_error` no longer treats an exception as a transport
   failure just because its message contains "connection". It decides by exception
