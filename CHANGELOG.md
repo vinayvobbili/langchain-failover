@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+## 0.2.2 (2026-10-10)
 - Docs: the README's "See it in use" link now points at the aisoc write-up.
   No code changes; released so pypi.org picks up the new README.
 
