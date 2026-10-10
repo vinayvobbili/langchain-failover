@@ -84,10 +84,10 @@ def replace_once(path: pathlib.Path, pattern: str, replacement: str) -> None:
 def roll_changelog(new: str) -> None:
     text = CHANGELOG.read_text()
     today = datetime.date.today().isoformat()
-    if re.search(r"^##\s+Unreleased\s*$", text, re.M | re.I):
+    if re.search(r"^##\s+Unreleased[ \t]*$", text, re.M | re.I):
         # Promote Unreleased -> the new version, and open a fresh Unreleased above.
         text = re.sub(
-            r"^##\s+Unreleased\s*$",
+            r"^##\s+Unreleased[ \t]*$",
             f"## Unreleased\n\n## {new} ({today})",
             text,
             count=1,
