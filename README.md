@@ -18,7 +18,7 @@ two strategies for running more than one model behind one interface:
 They compose: either tier of a `TieredChatAgent` can itself be a
 `FailoverChatModel`. Depends only on `langchain-core`.
 
-> **Background:** [SOC-in-a-Box: One LLM, Eight Hats](https://vinayvobbili.github.io/posts/building-soc-in-a-box/) — the production AI SOC this was extracted from, where it fails a local LLM over to a backup mid-incident and offloads final-answer synthesis to a frontier model.
+> **See it in use:** [aisoc: One LLM, Eight Hats](https://vinayvobbili.github.io/posts/building-aisoc/) — a multi-agent AI SOC that fails a local LLM over to a backup and offloads final-answer synthesis to a frontier model.
 
 ## Failover — for resilience
 
