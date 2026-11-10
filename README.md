@@ -66,11 +66,34 @@ multi-minute final turn into a couple of seconds, because the long generation
 moves off the busy box. Running your own loop? `synthesize_answer(composer, query,
 messages)` is the compose step on its own.
 
+## Use in a LangGraph agent
+
+`FailoverChatModel` drops into a LangGraph graph as the chat model. `bind_tools`
+binds the tools on both hosts, so the tool loop keeps running when the primary
+goes down partway through a run.
+
+```python
+llm = FailoverChatModel(primary=primary, secondary=backup).bind_tools([check_stock])
+
+graph = StateGraph(State)
+graph.add_node("agent", lambda s: {"messages": [llm.invoke(s["messages"])]})
+graph.add_node("tools", ToolNode([check_stock]))
+graph.add_edge(START, "agent")
+graph.add_conditional_edges("agent", tools_condition, {"tools": "tools", END: END})
+graph.add_edge("tools", "agent")
+```
+
+[`examples/langgraph_agent.py`](examples/langgraph_agent.py) is the full two-node
+agent with an inventory tool. It runs offline against scripted hosts
+(`python examples/langgraph_agent.py`), and `tests/test_langgraph_example.py`
+covers it with no network.
+
 ## Install
 
 ```bash
 pip install langchain-failover            # core
 pip install "langchain-failover[openai]"  # + langchain-openai for create_failover_llm
+pip install "langchain-failover[langgraph]"  # + langgraph for the agent example
 ```
 
 ## Why not `RunnableWithFallbacks` / `.with_fallbacks()`?

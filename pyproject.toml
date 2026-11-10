@@ -28,8 +28,10 @@ dependencies = [
 
 [project.optional-dependencies]
 openai = ["langchain-openai>=0.1"]
+langgraph = ["langgraph>=0.2; python_version >= '3.10'"]
 dev = [
     "langchain-openai>=0.1",
+    "langgraph>=0.2; python_version >= '3.10'",
     "pytest>=7",
     "ruff>=0.4",
     "build>=1.0",
